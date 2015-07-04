@@ -17,6 +17,41 @@
 
 from pprint import pprint
 
+_tag_unescapes = {
+    '\\': '\\',
+    ':': ';',
+    's': ' ',
+    'r': '\r',
+    'n': '\n',
+}
+_tag_escapes = {v: k for k, v in _tag_unescapes.items()}
+
+def tag_unescape(orig):
+    value = ''
+    while len(orig):
+        char = orig[0]
+        orig = orig[1:]
+        if char == '\\':
+            escape = orig[0]
+            orig = orig[1:]
+            value += _tag_unescapes.get(escape, escape)
+        else:
+            value += char
+
+    return value
+
+def tag_escape(orig):
+    value = ''
+    while len(orig):
+        char = orig[0]
+        orig = orig[1:]
+        if char in _tag_escapes:
+            value += '\\' + _tag_escapes[char]
+        else:
+            value += char
+
+    return value
+
 class RFC1459Message(object):
     @classmethod
     def from_data(cls, verb, params=None, source=None, tags=None):
@@ -53,7 +88,7 @@ class RFC1459Message(object):
             for tag in tag_str:
                 if '=' in tag:
                     k, v = tag.split('=', 1)
-                    tags[k] = v
+                    tags[k] = tag_unescape(v)
                 else:
                     tags[tag] = True
 
@@ -96,7 +131,7 @@ class RFC1459Message(object):
         components = []
 
         if self.tags:
-            components.append('@' + ';'.join([k + '=' + v for k, v in self.tags.items()]))
+            components.append('@' + ';'.join([k + '=' + tag_escape(v) for k, v in self.tags.items()]))
 
         if self.source:
             components.append(':' + self.source)
